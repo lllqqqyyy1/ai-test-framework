@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 赋能的自动化测试框架 - 智能测试用例生成与执行平台</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 AI 赋能的自动化测试框架</h1>
+            <p class="subtitle">基于 Test-Automation-Framework + 大语言模型的智能测试平台</p>
+        </header>
+
+        <!-- 功能导航 -->
+        <nav class="tab-navigation">
+            <button class="tab-btn active" data-tab="test-case">📝 AI 生成测试用例</button>
+            <button class="tab-btn" data-tab="test-script">💻 AI 生成测试脚本</button>
+            <button class="tab-btn" data-tab="test-execution">▶️ 自动化测试执行</button>
+            <button class="tab-btn" data-tab="report-analysis">📊 AI 报告分析</button>
+        </nav>
+
+        <main>
+            <!-- 模块 1: 测试用例生成 -->
+            <section id="tab-test-case" class="tab-content active">
+                <div class="module-header">
+                    <h2>📝 AI 生成测试用例</h2>
+                    <p class="module-desc">基于大语言模型,从需求文档智能生成覆盖全面的测试用例</p>
+                </div>
+                
+                <form id="generate-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="input-type">用例类型:</label>
+                            <select id="input-type" name="input_type" required>
+                                <option value="requirements">功能测试用例</option>
+                                <option value="interface">接口测试用例</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="tc-provider">AI 模型:</label>
+                            <select id="tc-provider" name="provider">
+                                <option value="qwen">通义千问 (Qwen)</option>
+                                <option value="deepseek">DeepSeek</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="input-text">需求/接口描述:</label>
+                        <textarea 
+                            id="input-text" 
+                            name="input" 
+                            rows="8" 
+                            placeholder="请详细描述您的需求,例如:\n用户登录功能:支持手机号+验证码登录,密码错误3次锁定账号\n\n或接口描述:\nPOST /api/login\n参数: phone(手机号), code(验证码)"
+                            required></textarea>
+                    </div>
+
+                    <div class="button-group">
+                        <button type="button" id="generate-btn" class="btn btn-primary" onclick="handleGenerateTestCase()">
+                            <span class="btn-text">✨ 生成测试用例</span>
+                            <span class="btn-loading" style="display: none;">⏳ 生成中...</span>
+                        </button>
+                        <button type="button" id="clear-btn" class="btn btn-secondary">清空</button>
+                    </div>
+                </form>
+
+                <!-- 用例结果展示 -->
+                <div id="tc-result-section" class="result-section" style="display: none;">
+                    <div class="result-header">
+                        <h3>📋 生成的测试用例</h3>
+                        <div class="result-actions">
+                            <span id="case-count" class="case-count"></span>
+                            <button id="save-cases-btn" class="btn btn-success">💾 保存到数据库</button>
+                        </div>
+                    </div>
+                    <div id="cases-container" class="cases-container"></div>
+                </div>
+            </section>
+
+            <!-- 模块 2: 测试脚本生成 -->
+            <section id="tab-test-script" class="tab-content">
+                <div class="module-header">
+                    <h2>💻 AI 生成测试脚本</h2>
+                    <p class="module-desc">输入接口文档,AI 自动编写符合框架规范的可执行 pytest 脚本</p>
+                </div>
+                
+                <form id="script-generate-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="script-name">脚本名称:</label>
+                            <input type="text" id="script-name" placeholder="test_login_api" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="ts-provider">AI 模型:</label>
+                            <select id="ts-provider">
+                                <option value="qwen">通义千问 (Qwen)</option>
+                                <option value="deepseek">DeepSeek</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="interface-doc">接口文档:</label>
+                        <textarea 
+                            id="interface-doc" 
+                            rows="10" 
+                            placeholder="请输入接口文档,例如:\nPOST /api/login\n请求参数:\n- phone: 手机号(必填,11位)\n- code: 验证码(必填,6位数字)\n\n返回:\n- code: 状态码(0成功)\n- data: {token, user_id}"
+                            required></textarea>
+                    </div>
+
+                    <div class="button-group">
+                        <button type="button" id="generate-script-btn" class="btn btn-primary" onclick="handleGenerateScript()">
+                            <span class="btn-text">🤖 生成测试脚本</span>
+                            <span class="btn-loading" style="display: none;">⏳ 生成中...</span>
+                        </button>
+                        <button type="button" id="clear-script-btn" class="btn btn-secondary">清空</button>
+                    </div>
+                </form>
+
+                <!-- 脚本展示 -->
+                <div id="script-result-section" class="result-section" style="display: none;">
+                    <div class="result-header">
+                        <h3>💻 生成的测试脚本</h3>
+                        <div class="result-actions">
+                            <button id="save-script-btn" class="btn btn-success">💾 保存到文件</button>
+                            <button id="execute-script-btn" class="btn btn-warning">▶️ 立即执行</button>
+                        </div>
+                    </div>
+                    <div class="code-container">
+                        <pre><code id="script-code-display" class="code-block"></code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 模块 3: 测试执行 -->
+            <section id="tab-test-execution" class="tab-content">
+                <div class="module-header">
+                    <h2>▶️ 自动化测试执行</h2>
+                    <p class="module-desc">基于 pytest 框架执行测试脚本,生成标准化测试报告</p>
+                </div>
+
+                <div class="execution-controls">
+                    <button id="refresh-scripts-btn" class="btn btn-secondary">🔄 刷新脚本列表</button>
+                </div>
+
+                <div class="script-list-container">
+                    <h3>📁 可用测试脚本</h3>
+                    <div id="scripts-list" class="list-container">
+                        <p class="empty-tip">点击"刷新脚本列表"加载脚本</p>
+                    </div>
+                </div>
+
+                <div id="execution-result" class="result-section" style="display: none;">
+                    <div class="result-header">
+                        <h3>📊 执行结果</h3>
+                    </div>
+                    <div class="execution-stats">
+                        <div class="stat-card">
+                            <div class="stat-label">总用例</div>
+                            <div class="stat-value" id="stat-total">0</div>
+                        </div>
+                        <div class="stat-card success">
+                            <div class="stat-label">通过</div>
+                            <div class="stat-value" id="stat-passed">0</div>
+                        </div>
+                        <div class="stat-card danger">
+                            <div class="stat-label">失败</div>
+                            <div class="stat-value" id="stat-failed">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">耗时</div>
+                            <div class="stat-value" id="stat-duration">0s</div>
+                        </div>
+                    </div>
+                    <div class="execution-actions">
+                        <button id="view-report-btn" class="btn btn-info">📄 查看报告</button>
+                        <button id="analyze-report-btn" class="btn btn-warning">🤖 AI 分析</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 模块 4: 报告分析 -->
+            <section id="tab-report-analysis" class="tab-content">
+                <div class="module-header">
+                    <h2>📊 AI 测试报告分析</h2>
+                    <p class="module-desc">AI 智能分析测试报告,自动定位失败原因并提供修复建议</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="task-select">选择测试任务:</label>
+                    <select id="task-select">
+                        <option value="">-- 请选择 --</option>
+                    </select>
+                    <button id="load-tasks-btn" class="btn btn-secondary btn-small">🔄 加载任务列表</button>
+                </div>
+
+                <div class="form-group">
+                    <label for="ra-provider">AI 模型:</label>
+                    <select id="ra-provider">
+                        <option value="qwen">通义千问 (Qwen)</option>
+                        <option value="deepseek">DeepSeek</option>
+                    </select>
+                </div>
+
+                <button id="analyze-btn" class="btn btn-primary">🤖 开始 AI 分析</button>
+
+                <div id="analysis-result" class="result-section" style="display: none;">
+                    <div class="result-header">
+                        <h3>🔍 AI 分析结果</h3>
+                    </div>
+                    <div id="analysis-content" class="markdown-content"></div>
+                </div>
+            </section>
+
+            <!-- 全局加载提示 -->
+            <div id="loading-overlay" class="loading-overlay" style="display: none;">
+                <div class="loading-spinner"></div>
+                <p id="loading-text">AI 正在处理,请稍候...</p>
+            </div>
+
+            <!-- 全局消息提示 -->
+            <div id="global-message" class="message" style="display: none;"></div>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 AI 智能测试平台 | Powered by Django, LangChain & Pytest</p>
+        </footer>
+    </div>
+
+    <script src="{% static 'js/main.js' %}"></script>
+</body>
+</html>

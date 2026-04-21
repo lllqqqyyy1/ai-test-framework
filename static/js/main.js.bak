@@ -1,0 +1,274 @@
+/**
+ * AI 测试用例生成系统 - 前端交互逻辑
+ */
+
+// 全局变量存储生成的测试用例
+let generatedCases = [];
+let currentInputText = '';
+let currentCaseType = '';
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    initGeneratePage();
+});
+
+/**
+ * 初始化页面事件
+ */
+function initGeneratePage() {
+    const form = document.getElementById('generate-form');
+    const clearBtn = document.getElementById('clear-btn');
+    const saveBtn = document.getElementById('save-btn');
+    
+    // 表单提交事件 - 生成测试用例
+    form.addEventListener('submit', handleGenerate);
+    
+    // 清空按钮事件
+    clearBtn.addEventListener('click', handleClear);
+    
+    // 保存按钮事件
+    saveBtn.addEventListener('click', handleSave);
+}
+
+/**
+ * 获取 CSRF Token
+ */
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+/**
+ * 处理生成测试用例
+ */
+async function handleGenerate(event) {
+    event.preventDefault();
+    
+    // 获取表单数据
+    const inputType = document.getElementById('input-type').value;
+    const provider = document.getElementById('provider').value;
+    const inputText = document.getElementById('input-text').value.trim();
+    
+    // 验证输入
+    if (!inputText) {
+        showMessage('请输入需求描述', 'error');
+        return;
+    }
+    
+    // 保存当前输入
+    currentInputText = inputText;
+    currentCaseType = inputType;
+    
+    // 显示加载状态
+    showLoading(true);
+    setLoadingButton(true);
+    
+    try {
+        // 发送 API 请求
+        const response = await fetch('/api/generate/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                input_type: inputType,
+                input: inputText,
+                provider: provider
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            generatedCases = data.test_cases;
+            displayCases(generatedCases);
+            showMessage(`成功生成 ${data.count} 个测试用例`, 'success');
+        } else {
+            showMessage(data.message || '生成失败', 'error');
+        }
+        
+    } catch (error) {
+        console.error('生成测试用例失败:', error);
+        showMessage('网络错误,请稍后重试', 'error');
+    } finally {
+        showLoading(false);
+        setLoadingButton(false);
+    }
+}
+
+/**
+ * 显示测试用例
+ */
+function displayCases(cases) {
+    const resultSection = document.getElementById('result-section');
+    const casesContainer = document.getElementById('cases-container');
+    const caseCount = document.getElementById('case-count');
+    
+    // 清空之前的内容
+    casesContainer.innerHTML = '';
+    
+    // 更新用例数量
+    caseCount.textContent = `共 ${cases.length} 个测试用例`;
+    
+    // 生成用例卡片
+    cases.forEach((caseItem, index) => {
+        const card = createCaseCard(caseItem, index + 1);
+        casesContainer.appendChild(card);
+    });
+    
+    // 显示结果区域
+    resultSection.style.display = 'block';
+    
+    // 滚动到结果区域
+    resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/**
+ * 创建测试用例卡片
+ */
+function createCaseCard(caseItem, index) {
+    const card = document.createElement('div');
+    card.className = 'case-card';
+    
+    card.innerHTML = `
+        <h3>用例 ${index}: ${escapeHtml(caseItem.title)}</h3>
+        <div class="case-description">${escapeHtml(caseItem.description)}</div>
+        <div class="case-steps">
+            <h4>📝 测试步骤:</h4>
+            <p>${escapeHtml(caseItem.test_steps)}</p>
+        </div>
+        <div class="case-expected">
+            <h4>✅ 预期结果:</h4>
+            <p>${escapeHtml(caseItem.expected_results)}</p>
+        </div>
+    `;
+    
+    return card;
+}
+
+/**
+ * 处理保存测试用例
+ */
+async function handleSave() {
+    if (generatedCases.length === 0) {
+        showMessage('没有可保存的测试用例', 'error');
+        return;
+    }
+    
+    const saveBtn = document.getElementById('save-btn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = '保存中...';
+    
+    try {
+        // 发送保存请求
+        const response = await fetch('/api/save-test-case/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                test_cases: generatedCases,
+                requirements: currentInputText,
+                case_type: currentCaseType,
+                priority: 'medium'
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showMessage(data.message, 'success');
+        } else {
+            showMessage(data.message || '保存失败', 'error');
+        }
+        
+    } catch (error) {
+        console.error('保存测试用例失败:', error);
+        showMessage('网络错误,请稍后重试', 'error');
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = '💾 保存到数据库';
+    }
+}
+
+/**
+ * 处理清空表单
+ */
+function handleClear() {
+    document.getElementById('generate-form').reset();
+    document.getElementById('result-section').style.display = 'none';
+    document.getElementById('save-message').style.display = 'none';
+    generatedCases = [];
+    currentInputText = '';
+    currentCaseType = '';
+}
+
+/**
+ * 显示加载状态
+ */
+function showLoading(show) {
+    const loadingOverlay = document.getElementById('loading-overlay');
+    loadingOverlay.style.display = show ? 'flex' : 'none';
+}
+
+/**
+ * 设置按钮加载状态
+ */
+function setLoadingButton(loading) {
+    const btn = document.getElementById('generate-btn');
+    const btnText = btn.querySelector('.btn-text');
+    const btnLoading = btn.querySelector('.btn-loading');
+    
+    if (loading) {
+        btn.disabled = true;
+        btnText.style.display = 'none';
+        btnLoading.style.display = 'inline';
+    } else {
+        btn.disabled = false;
+        btnText.style.display = 'inline';
+        btnLoading.style.display = 'none';
+    }
+}
+
+/**
+ * 显示消息提示
+ */
+function showMessage(message, type) {
+    const resultSection = document.getElementById('result-section');
+    const messageDiv = document.getElementById('save-message');
+    
+    messageDiv.textContent = message;
+    messageDiv.className = `message ${type}`;
+    messageDiv.style.display = 'block';
+    
+    // 3秒后自动隐藏
+    setTimeout(() => {
+        messageDiv.style.display = 'none';
+    }, 5000);
+    
+    // 滚动到消息位置
+    if (resultSection.style.display === 'block') {
+        messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+/**
+ * HTML 转义,防止 XSS 攻击
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
