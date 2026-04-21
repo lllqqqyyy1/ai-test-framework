@@ -271,16 +271,5 @@ pipeline {
 }
 ```
 
-## 许可证
 
-MIT License
-
-## 联系方式
-
-- 项目地址: [GitHub Repository](https://github.com/your-username/ai-test-framework)
-- 问题反馈: [Issues](https://github.com/your-username/ai-test-framework/issues)
-
----
-
-**版本**: v2.0  
 **更新日期**: 2026-04-15
